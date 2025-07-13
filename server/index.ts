@@ -272,29 +272,12 @@ io.on('connection', (socket: Socket) => {
     const raceId = playerRaces.get(socket.id);
     if (!raceId) {
       console.log('No race found for player:', socket.id);
-      socket.emit('race-error', 'No active race found. Please join a new race.');
       return;
     }
 
     const race = races.get(raceId);
     if (!race) {
       console.log('Race not found:', raceId);
-      playerRaces.delete(socket.id);
-      socket.emit('race-error', 'Race no longer exists. Please join a new race.');
-      return;
-    }
-
-    // Only allow restart for private rooms
-    if (!race.isPrivate) {
-      console.log('Restart attempted on global race:', raceId);
-      socket.emit('race-error', 'Restart only available for private rooms.');
-      return;
-    }
-
-    // Only allow restart if race is finished
-    if (!race.isFinished) {
-      console.log('Restart attempted on active race:', raceId);
-      socket.emit('race-error', 'Cannot restart an active race.');
       return;
     }
 
@@ -489,16 +472,13 @@ function endRace(raceId: string) {
 
   io.to(raceId).emit('race-end', { results });
   
-  // Only clean up global races after 30 seconds
-  // Private rooms should persist for restart functionality
-  if (!race.isPrivate) {
-    setTimeout(() => {
-      races.delete(raceId);
-      Array.from(race.players.keys()).forEach(playerId => {
-        playerRaces.delete(playerId);
-      });
-    }, 30000);
-  }
+  // Clean up race after 30 seconds
+  setTimeout(() => {
+    races.delete(raceId);
+    Array.from(race.players.keys()).forEach(playerId => {
+      playerRaces.delete(playerId);
+    });
+  }, 30000);
 }
 
 const PORT = process.env.PORT || 3001;

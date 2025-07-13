@@ -2,20 +2,13 @@
 
 import { useRaceStore } from '@/lib/store';
 import { cn, getWPMColor, getAccuracyColor } from '@/lib/utils';
-import { FiAward, FiRefreshCw } from 'react-icons/fi';
+import { FiAward, FiRefreshCw, FiX } from 'react-icons/fi';
 
 export default function RaceResults() {
   const { raceResults, resetRace, joinRace, leaveRace, requestRestart, isPrivateRoom } = useRaceStore();
 
+  // Only show when there are actual race results
   if (!raceResults || raceResults.length === 0) return null;
-
-  // Sort results to ensure proper ranking
-  const sortedResults = [...raceResults].sort((a, b) => {
-    if (a.finished && !b.finished) return -1;
-    if (!a.finished && b.finished) return 1;
-    if (a.finished && b.finished) return a.position - b.position;
-    return b.progress - a.progress;
-  });
 
   const handleNewRace = () => {
     console.log('Race restart button clicked - isPrivateRoom:', isPrivateRoom);
@@ -31,103 +24,111 @@ export default function RaceResults() {
     }
   };
 
+  const handleClose = () => {
+    leaveRace();
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="perfect-glass-card rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto border border-gray-200 shadow-2xl">
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <FiAward className="w-10 h-10 text-white" />
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto border border-gray-200 dark:border-gray-700 shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="text-center flex-1">
+            <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <FiAward className="w-10 h-10 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
+              Race Finished!
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Here are the final results
+            </p>
           </div>
-          <h2 className="heading-secondary font-display text-gray-800 mb-2 text-clean tracking-tight">
-            Race Complete!
-          </h2>
-          <p className="text-gray-600 font-body text-subtle">
-            {sortedResults.filter(p => p.finished).length} of {sortedResults.length} players finished
-          </p>
+          <button
+            onClick={handleClose}
+            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          >
+            <FiX className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          </button>
         </div>
 
+        {/* Results List */}
         <div className="space-y-4 mb-8">
-          {sortedResults.map((player, index) => {
-            // Calculate final position for display
-            const displayPosition = player.finished ? player.position : 'DNF';
-            const isCurrentUser = player.username === useRaceStore.getState().username;
-            
-            return (
-              <div
-                key={player.id}
-                className={cn(
-                  "flex items-center justify-between p-4 rounded-xl border glass-enhanced transition-all duration-200",
-                  isCurrentUser && "ring-2 ring-blue-500 bg-blue-50",
-                  index === 0 && !isCurrentUser && "bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200",
-                  index === 1 && !isCurrentUser && "bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200",
-                  index === 2 && !isCurrentUser && "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200",
-                  index > 2 && !isCurrentUser && "bg-gray-50 border-gray-200"
-                )}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold shadow-lg",
-                    isCurrentUser && "bg-gradient-to-br from-blue-400 to-blue-600 text-white",
-                    index === 0 && !isCurrentUser && "bg-gradient-to-br from-yellow-400 to-orange-500 text-white",
-                    index === 1 && !isCurrentUser && "bg-gradient-to-br from-gray-400 to-gray-500 text-white",
-                    index === 2 && !isCurrentUser && "bg-gradient-to-br from-amber-400 to-yellow-500 text-white",
-                    index > 2 && !isCurrentUser && "bg-gray-300 text-gray-700"
-                  )}>
-                    {displayPosition}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-lg text-gray-800 font-display flex items-center gap-2">
-                      {player.username}
-                      {isCurrentUser && (
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
-                          You
-                        </span>
-                      )}
-                      {index === 0 && player.finished && (
-                        <FiAward className="w-5 h-5 text-yellow-500" />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 text-sm font-body">
-                      <span className={getWPMColor(player.wpm)}>
-                        {Math.round(player.wpm)} WPM
-                      </span>
-                      <span className={getAccuracyColor(player.accuracy)}>
-                        {Math.round(player.accuracy)}% Accuracy
-                      </span>
-                      <span className="text-gray-500">
-                        {Math.round(player.progress)}% Complete
-                      </span>
-                    </div>
-                  </div>
+          {raceResults.map((player, index) => (
+            <div
+              key={player.id}
+              className={cn(
+                "flex items-center justify-between p-4 rounded-xl border transition-all",
+                index === 0 && "bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 dark:from-yellow-900/20 dark:to-orange-900/20 dark:border-yellow-600",
+                index === 1 && "bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200 dark:from-gray-800/50 dark:to-slate-800/50 dark:border-gray-600",
+                index === 2 && "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200 dark:from-amber-900/20 dark:to-yellow-900/20 dark:border-amber-600",
+                index > 2 && "bg-gray-50 border-gray-200 dark:bg-gray-800/50 dark:border-gray-600"
+              )}
+            >
+              <div className="flex items-center gap-4">
+                {/* Position Badge */}
+                <div className={cn(
+                  "w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold shadow-lg",
+                  index === 0 && "bg-gradient-to-br from-yellow-400 to-orange-500 text-white",
+                  index === 1 && "bg-gradient-to-br from-gray-400 to-gray-500 text-white",
+                  index === 2 && "bg-gradient-to-br from-amber-400 to-yellow-500 text-white",
+                  index > 2 && "bg-gray-300 text-gray-700 dark:bg-gray-600 dark:text-gray-200"
+                )}>
+                  {player.finished ? (index + 1) : 'DNF'}
                 </div>
-
-                <div className="text-right">
-                  <div className={cn(
-                    "text-2xl font-bold font-display",
-                    player.finished ? "text-green-600" : "text-gray-500"
-                  )}>
-                    {player.finished ? "✓" : "—"}
+                
+                {/* Player Info */}
+                <div>
+                  <div className="font-semibold text-lg text-gray-800 dark:text-white">
+                    {player.username}
                   </div>
-                  <div className="text-sm text-gray-500 font-body">
-                    {player.finished ? "Finished" : "Incomplete"}
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className={cn(
+                      "font-medium",
+                      getWPMColor(player.wpm)
+                    )}>
+                      {Math.round(player.wpm)} WPM
+                    </span>
+                    <span className={cn(
+                      "font-medium",
+                      getAccuracyColor(player.accuracy)
+                    )}>
+                      {Math.round(player.accuracy)}% Accuracy
+                    </span>
                   </div>
                 </div>
               </div>
-            );
-          })}
+
+              {/* Progress and Stats */}
+              <div className="text-right">
+                <div className="text-2xl font-bold text-gray-600 dark:text-gray-300">
+                  {Math.round(player.progress)}%
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  Completed
+                </div>
+                {player.finished && (
+                  <div className="text-xs text-green-600 dark:text-green-400 font-medium mt-1">
+                    Finished
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
 
+        {/* Action Buttons */}
         <div className="flex gap-4">
           <button
             onClick={handleNewRace}
-            className="flex-1 glass-button-premium text-gray-800 font-semibold transition-colors flex items-center justify-center gap-2 font-display"
+            className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg"
           >
             <FiRefreshCw className="w-5 h-5" />
             {isPrivateRoom ? 'Race Again' : 'New Race'}
           </button>
           <button
-            onClick={leaveRace}
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all duration-200 font-body backdrop-blur-sm"
+            onClick={handleClose}
+            className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200"
           >
             Quit
           </button>

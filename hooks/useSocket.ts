@@ -64,17 +64,10 @@ export const useSocket = () => {
     });
 
     socketInstance.on('race-error', (error) => {
-      console.log('Race error received:', error);
-      
-      // Show error to user
-      alert(error);
-      
-      // If the error is about room closure, restart failure, or joining a new race, reset the client completely
+      // If the error is about room closure or joining a new race, reset the client completely
       if (error.includes('Please join a new race') || 
           error.includes('Race not found') || 
-          error.includes('Room closed') ||
-          error.includes('no longer exists') ||
-          error.includes('No active race found')) {
+          error.includes('Room closed')) {
         resetRace(); // This will clear all state and navigate back to main menu
       }
     });
