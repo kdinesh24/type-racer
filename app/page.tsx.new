@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSocket } from '@/hooks/useSocket';
 import { useRaceStore } from '@/lib/store';
 // Import components directly to avoid barrel export issues
+import { Button } from '@/components/ui/button';
 import UsernameModal from '@/components/UsernameModal';
 import RoomModal from '@/components/RoomModal';
 import RaceStatus from '@/components/RaceStatus';
@@ -12,7 +13,6 @@ import PlayersList from '@/components/PlayersList';
 import RaceResults from '@/components/RaceResults';
 import ConnectionStatus from '@/components/ConnectionStatus';
 import PracticeMode from '@/components/PracticeMode';
-import { Button } from '@/components/ui/button';
 import { FiZap, FiTarget, FiUsers } from 'react-icons/fi';
 
 export default function Home() {
