@@ -9,20 +9,26 @@ import PlayersList from '@/components/race/PlayersList';
 import RaceResults from '@/components/race/RaceResults';
 import ConnectionStatus from '@/components/common/ConnectionStatus';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@/components/ui/card';
 import { FiUsers, FiPlay } from 'react-icons/fi';
 
 export default function GlobalRacePage() {
   const [showUsernameModal, setShowUsernameModal] = useState(false);
-  const { 
-    username, 
-    raceId, 
-    isConnected, 
+  const {
+    username,
+    raceId,
+    isConnected,
     joinRace,
-    leaveRace 
+    leaveRace,
   } = useRaceStore();
 
-  // Show username modal if no username is set
+  // Prompt for username if not set
   useEffect(() => {
     if (!username && isConnected) {
       setShowUsernameModal(true);
@@ -31,7 +37,7 @@ export default function GlobalRacePage() {
 
   const handleJoinRace = () => {
     if (username) {
-      joinRace(); // Join global race
+      joinRace();
     } else {
       setShowUsernameModal(true);
     }
@@ -39,7 +45,7 @@ export default function GlobalRacePage() {
 
   const handleUsernameSet = () => {
     setShowUsernameModal(false);
-    joinRace(); // Join global race after setting username
+    joinRace();
   };
 
   const handleLeaveRace = () => {
@@ -53,88 +59,91 @@ export default function GlobalRacePage() {
         <ConnectionStatus isConnected={isConnected} />
       </div>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 space-y-6">
         {!raceId ? (
-          /* Lobby/Join Race Section */
-          <div className="max-w-2xl mx-auto">
-            <Card className="shadow-xl">
-              <CardHeader className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <FiUsers className="w-8 h-8 text-white" />
-                </div>
-                <CardTitle className="text-2xl font-bold text-gray-900">
-                  Global Race
-                </CardTitle>
-                <p className="text-gray-600">
-                  Compete with players worldwide in real-time typing races
-                </p>
-              </CardHeader>
-              
-              <CardContent className="space-y-6">
-                {/* Username Display */}
-                {username && (
-                  <div className="text-center">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      Playing as: {username}
-                    </div>
-                  </div>
-                )}
-
-                {/* Join Race Button */}
+          /* Lobby / Join Race */
+          <Card className="max-w-2xl mx-auto shadow-xl">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-green-600">
+                <FiUsers className="h-8 w-8 text-white" />
+              </div>
+              <CardTitle className="text-2xl font-bold">
+                Global Race
+              </CardTitle>
+              <CardDescription>
+                Compete with players worldwide in real-time typing races
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {username && (
                 <div className="text-center">
-                  <Button 
-                    onClick={handleJoinRace}
-                    disabled={!isConnected}
-                    className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-8 py-3 text-lg"
-                  >
-                    <FiPlay className="w-5 h-5 mr-2" />
-                    {username ? 'Join Global Race' : 'Set Username & Join'}
-                  </Button>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-2 text-sm font-medium text-green-800">
+                    <span className="h-2 w-2 rounded-full bg-green-500" />
+                    Playing as {username}
+                  </span>
                 </div>
-
-                {/* Connection Status */}
-                {!isConnected && (
-                  <div className="text-center text-red-600 text-sm">
-                    Connecting to server...
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+              )}
+              <div className="text-center">
+                <Button
+                  onClick={handleJoinRace}
+                  disabled={!isConnected}
+                  className="bg-gradient-to-r from-green-500 to-green-600 px-8 py-3 text-lg text-white hover:from-green-600 hover:to-green-700"
+                >
+                  <FiPlay className="mr-2 h-5 w-5" />
+                  {username ? 'Join Global Race' : 'Set Username & Join'}
+                </Button>
+              </div>
+              {!isConnected && (
+                <p className="text-center text-sm text-red-600">
+                  Connecting to server...
+                </p>
+              )}
+            </CardContent>
+          </Card>
         ) : (
           /* Race Interface */
           <div className="space-y-6">
-            {/* Race Header */}
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold text-gray-900">Global Race</h1>
-              <Button 
-                onClick={handleLeaveRace}
-                variant="outline"
-                className="text-red-600 border-red-600 hover:bg-red-50"
-              >
-                Leave Race
-              </Button>
-            </div>
+            {/* Header */}
+            <Card>
+              <CardHeader className="flex items-center justify-between">
+                <CardTitle className="text-2xl font-bold">
+                  Global Race
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  onClick={handleLeaveRace}
+                  className="text-red-600 border-red-600 hover:bg-red-50"
+                >
+                  Leave Race
+                </Button>
+              </CardHeader>
+            </Card>
 
-            {/* Race Status */}
-            <RaceStatus />
+            {/* Status */}
+            <Card>
+              <CardContent>
+                <RaceStatus />
+              </CardContent>
+            </Card>
 
-            {/* Main Race Area */}
+            {/* Typing & Players */}
             <div className="grid lg:grid-cols-3 gap-6">
-              {/* Typing Area */}
               <div className="lg:col-span-2">
                 <TypingArea />
               </div>
-
-              {/* Players List */}
-              <div>
-                <PlayersList />
-              </div>
+              <Card>
+                <CardContent>
+                  <PlayersList />
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Race Results */}
-            <RaceResults />
+            {/* Results */}
+            <Card>
+              <CardContent>
+                <RaceResults />
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>

@@ -29,15 +29,15 @@ class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+        <div className="min-h-screen bg-white flex items-center justify-center">
           <div className="max-w-md w-full mx-4 text-center">
-            <div className="w-20 h-20 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mx-auto mb-6">
-              <FiAlertTriangle className="w-10 h-10 text-red-600 dark:text-red-400" />
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <FiAlertTriangle className="w-10 h-10 text-red-600" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            <h1 className="text-2xl font-bold text-black mb-4">
               Oops! Something went wrong
             </h1>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
+            <p className="text-black mb-6">
               We encountered an unexpected error. Don&apos;t worry, you can try refreshing the page.
             </p>
             <div className="space-y-4">
@@ -49,11 +49,11 @@ class ErrorBoundary extends Component<Props, State> {
                 Refresh Page
               </button>
               {process.env.NODE_ENV === 'development' && this.state.error && (
-                <details className="text-left bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-                  <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <details className="text-left bg-white border border-gray-200 p-4 rounded-lg">
+                  <summary className="cursor-pointer text-sm font-medium text-black mb-2">
                     Error Details
                   </summary>
-                  <pre className="text-xs text-red-600 dark:text-red-400 whitespace-pre-wrap">
+                  <pre className="text-xs text-red-600 whitespace-pre-wrap">
                     {this.state.error.message}
                     {'\n'}
                     {this.state.error.stack}

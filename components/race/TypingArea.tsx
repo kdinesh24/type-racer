@@ -4,40 +4,40 @@ import { useState, useEffect, useRef } from 'react';
 import { useRaceStore } from '@/store/race.store';
 import { useTypingStats } from '@/hooks/useSocket';
 import { cn } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 
 export default function TypingArea() {
-  const { 
-    text, 
-    isRaceActive, 
-    startTime, 
-    updateTypingProgress, 
-    isPrivateRoom, 
-    isHost, 
-    players, 
+  const {
+    text,
+    isRaceActive,
+    startTime,
+    updateTypingProgress,
+    isPrivateRoom,
+    isHost,
+    players,
     countdown,
-    startPrivateRace 
+    startPrivateRace,
   } = useRaceStore();
-
-  // Debug logging only when significant values change
-  useEffect(() => {
-    console.log('🎮 TypingArea - Host status changed:', {
-      isPrivateRoom,
-      isHost,
-      playersLength: players.length,
-      isRaceActive,
-      countdown,
-      shouldShowStartButton: isPrivateRoom && isHost && !isRaceActive && countdown === 0
-    });
-  }, [isPrivateRoom, isHost, players.length, isRaceActive, countdown]);
 
   const [userInput, setUserInput] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [lastCompletedWordIndex, setLastCompletedWordIndex] = useState(0);
   const [currentWordStartIndex, setCurrentWordStartIndex] = useState(0);
-  const [wordErrors, setWordErrors] = useState<Map<number, boolean>>(new Map()); // Track which words have errors
+  const [wordErrors, setWordErrors] = useState<Map<number, boolean>>(
+    new Map()
+  );
+  const [wordSkipPositions, setWordSkipPositions] = useState<Map<number, number>>(
+    new Map()
+  );
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  
-  const { wpm, accuracy, calculateStats } = useTypingStats(text, currentIndex, startTime);
+
+  const { wpm, accuracy, calculateStats } = useTypingStats(
+    text,
+    currentIndex,
+    startTime
+  );
 
   useEffect(() => {
     if (isRaceActive && inputRef.current) {
@@ -45,339 +45,358 @@ export default function TypingArea() {
     }
   }, [isRaceActive]);
 
-  // Reset typing state when text changes (new race or restart)
+  // Reset typing state on new text
   useEffect(() => {
     setUserInput('');
     setCurrentIndex(0);
     setLastCompletedWordIndex(0);
     setCurrentWordStartIndex(0);
     setWordErrors(new Map());
+    setWordSkipPositions(new Map());
   }, [text]);
 
+  // Report progress to store
   useEffect(() => {
     if (startTime) {
       const stats = calculateStats(userInput);
       updateTypingProgress(currentIndex, stats.wpm, stats.accuracy);
     }
-  }, [userInput, currentIndex, startTime, calculateStats, updateTypingProgress]);
+  }, [
+    userInput,
+    currentIndex,
+    startTime,
+    calculateStats,
+    updateTypingProgress,
+  ]);
 
-  // Find word boundaries in the text
-  const findWordStart = (index: number): number => {
-    while (index > 0 && text[index - 1] !== ' ') {
-      index--;
-    }
-    return index;
+  // Helpers to find word boundaries
+  const findWordStart = (idx: number) => {
+    while (idx > 0 && text[idx - 1] !== ' ') idx--;
+    return idx;
   };
-
-  const findWordEnd = (index: number): number => {
-    while (index < text.length && text[index] !== ' ') {
-      index++;
-    }
-    return index;
+  const findWordEnd = (idx: number) => {
+    while (idx < text.length && text[idx] !== ' ') idx++;
+    return idx;
   };
+  const isAtBoundary = (idx: number) =>
+    idx === 0 || text[idx - 1] === ' ';
 
-  const isAtWordBoundary = (index: number): boolean => {
-    return index === 0 || text[index - 1] === ' ';
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  // Handle typing
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>
+  ) => {
     if (!isRaceActive) return;
-
     const value = e.target.value;
-    const newIndex = value.length;
+    const newIdx = value.length;
+    if (newIdx > text.length) return;
 
-    // Prevent typing beyond the text length
-    if (newIndex > text.length) return;
-
-    // NO BACKSPACE BLOCKING - Allow free backspacing anywhere
-
-    // UPDATE ERROR TRACKING for current word
-    const currentWordStart = findWordStart(newIndex);
-    const currentWordEnd = findWordEnd(currentWordStart);
-    const currentWordInText = text.slice(currentWordStart, currentWordEnd);
-    const currentWordTyped = value.slice(currentWordStart, Math.min(newIndex, currentWordEnd));
-    
-    const newWordErrors = new Map(wordErrors);
-    if (currentWordTyped.length > 0) {
-      const hasErrors = !currentWordInText.startsWith(currentWordTyped);
-      newWordErrors.set(currentWordStart, hasErrors);
+    // track errors in current word
+    const ws = findWordStart(newIdx);
+    const we = findWordEnd(ws);
+    const typed = value.slice(ws, Math.min(newIdx, we));
+    const actual = text.slice(ws, we);
+    const errs = new Map(wordErrors);
+    if (typed.length > 0) {
+      errs.set(ws, !actual.startsWith(typed));
+      setWordErrors(errs);
     }
-    setWordErrors(newWordErrors);
 
-    // TRACK WORD COMPLETION when reaching spaces or end
-    if (newIndex > currentIndex && newIndex <= text.length) {
-      const char = text[newIndex - 1];
-      if (char === ' ' || newIndex === text.length) {
-        const wordStart = findWordStart(newIndex - 1);
-        const wordEnd = char === ' ' ? newIndex - 1 : newIndex;
-        const wordInText = text.slice(wordStart, wordEnd);
-        const wordTyped = value.slice(wordStart, wordEnd);
-        
-        if (wordInText === wordTyped) {
-          setLastCompletedWordIndex(newIndex);
+    // word completion
+    if (newIdx > currentIndex && newIdx <= text.length) {
+      const ch = text[newIdx - 1];
+      if (ch === ' ' || newIdx === text.length) {
+        const start = findWordStart(newIdx - 1);
+        const end = ch === ' ' ? newIdx - 1 : newIdx;
+        const inText = text.slice(start, end);
+        const inTyped = value.slice(start, end);
+        if (inText === inTyped) {
+          setLastCompletedWordIndex(newIdx);
         }
-        
-        if (newIndex < text.length) {
-          setCurrentWordStartIndex(newIndex);
+        if (newIdx < text.length) {
+          setCurrentWordStartIndex(newIdx);
         }
       }
     }
 
-    // UPDATE CURRENT WORD START when moving forward
-    if (newIndex > currentIndex) {
-      const newWordStart = findWordStart(newIndex);
-      if (newWordStart !== currentWordStartIndex && isAtWordBoundary(newIndex)) {
-        setCurrentWordStartIndex(newWordStart);
+    // update word start on forward
+    if (newIdx > currentIndex) {
+      const nStart = findWordStart(newIdx);
+      if (nStart !== currentWordStartIndex && isAtBoundary(newIdx)) {
+        setCurrentWordStartIndex(nStart);
       }
     }
 
-    // APPLY CHANGES
     setUserInput(value);
-    setCurrentIndex(newIndex);
+    setCurrentIndex(newIdx);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  // MonkeyType-style space jump & key blocks
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLTextAreaElement>
+  ) => {
     if (!isRaceActive) return;
 
-    // SPACE KEY - Jump to next word like MonkeyType
     if (e.key === ' ') {
-      console.log('SPACE pressed, currentIndex:', currentIndex);
-      const currentWordStart = findWordStart(currentIndex);
-      const currentWordEnd = findWordEnd(currentWordStart);
-      console.log('Word boundaries:', { currentWordStart, currentWordEnd });
-      
-      // If we're in the middle of a word (not at word boundary), jump to next word
-      if (currentIndex < currentWordEnd) {
-        console.log('🚀 JUMPING TO NEXT WORD WITH ERRORS!');
-        e.preventDefault(); // Stop the space from being typed
-        
-        // Find the next word start (after the space)
-        let jumpIndex = currentWordEnd;
-        // Skip the space character to get to next word
-        if (jumpIndex < text.length && text[jumpIndex] === ' ') {
-          jumpIndex++; // Move past the space
-        }
-        
-        // Make sure we don't go beyond text length
-        if (jumpIndex <= text.length) {
-          // Create input with the partially typed word + remaining chars as spaces + space
-          // This will mark the untyped part as errors (incorrect chars)
-          const remainingWord = text.slice(currentIndex, currentWordEnd);
-          const spaceChar = text[currentWordEnd] === ' ' ? ' ' : '';
-          
-          // Fill the remaining characters with incorrect chars (spaces) to show as errors
-          const newInputValue = userInput + ' '.repeat(remainingWord.length) + spaceChar;
-          
-          console.log('Setting new input with errors:', newInputValue, 'jumpIndex:', jumpIndex);
-          
-          // Update all state
-          setUserInput(newInputValue);
-          setCurrentIndex(jumpIndex);
-          setCurrentWordStartIndex(jumpIndex);
-          
-          // Mark the skipped word as having errors (since it was incomplete)
-          const newWordErrors = new Map(wordErrors);
-          newWordErrors.set(currentWordStart, true);
-          setWordErrors(newWordErrors);
-        }
-        
-        return; // Don't process any other logic
-      } else {
-        console.log('At word boundary, allowing normal space');
-      }
-      // If at word boundary, allow normal space typing (don't prevent default)
-    }
-
-    // Prevent arrow keys and other navigation keys
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || 
-        e.key === 'ArrowUp' || e.key === 'ArrowDown' ||
-        e.key === 'Home' || e.key === 'End' ||
-        e.key === 'PageUp' || e.key === 'PageDown') {
-      e.preventDefault();
-      return;
-    }
-
-    // Prevent Ctrl+A, Ctrl+V, Ctrl+C, etc.
-    if (e.ctrlKey || e.metaKey) {
-      if (e.key === 'a' || e.key === 'v' || e.key === 'c' || e.key === 'x' || e.key === 'z') {
+      const ws = findWordStart(currentIndex);
+      const we = findWordEnd(ws);
+      if (currentIndex < we) {
         e.preventDefault();
+        let jump = we;
+        if (jump < text.length && text[jump] === ' ') jump++;
+        const remLen = we - currentIndex;
+        const spaceChar = text[we] === ' ' ? ' ' : '';
+        const newVal =
+          userInput + ' '.repeat(remLen) + spaceChar;
+        setUserInput(newVal);
+        setCurrentIndex(jump);
+        setCurrentWordStartIndex(jump);
+        
+        // Store the skip position for backspace logic
+        const newSkipPositions = new Map(wordSkipPositions);
+        newSkipPositions.set(ws, currentIndex);
+        setWordSkipPositions(newSkipPositions);
+        
+        const errs = new Map(wordErrors);
+        errs.set(ws, true);
+        setWordErrors(errs);
         return;
       }
     }
 
-    // Handle Tab key - prevent default
-    if (e.key === 'Tab') {
+    // BACKSPACE smart undo skip - go back to previous word if at word start
+    if (e.key === 'Backspace') {
+      if (currentIndex === currentWordStartIndex && currentWordStartIndex > 0) {
+        // Find the previous word start
+        let prevWordEnd = currentWordStartIndex - 1;
+        while (prevWordEnd > 0 && text[prevWordEnd] === ' ') {
+          prevWordEnd--;
+        }
+        const prevWordStart = findWordStart(prevWordEnd);
+        
+        // Check if the previous word was skipped (has a skip position)
+        const skipPos = wordSkipPositions.get(prevWordStart);
+        if (skipPos !== undefined) {
+          e.preventDefault();
+          
+          // Go back to the exact position where the user skipped from
+          setCurrentIndex(skipPos);
+          setCurrentWordStartIndex(prevWordStart);
+          setUserInput(userInput.slice(0, skipPos));
+          
+          // Clear the skip position and error state for the word we're going back to
+          const newSkipPositions = new Map(wordSkipPositions);
+          newSkipPositions.delete(prevWordStart);
+          setWordSkipPositions(newSkipPositions);
+          
+          const errs = new Map(wordErrors);
+          errs.delete(prevWordStart);
+          setWordErrors(errs);
+          return;
+        }
+      }
+    }
+
+    if (
+      [
+        'ArrowLeft',
+        'ArrowRight',
+        'ArrowUp',
+        'ArrowDown',
+        'Home',
+        'End',
+        'PageUp',
+        'PageDown',
+        'Tab',
+      ].includes(e.key) ||
+      e.ctrlKey ||
+      e.metaKey
+    ) {
       e.preventDefault();
-      return;
     }
   };
 
-  const renderText = () => {
-    return text.split('').map((char, index) => {
-      let className = 'untyped-char';
-      
-      if (index < userInput.length) {
-        className = userInput[index] === char ? 'correct-char' : 'incorrect-char';
-      } else if (index === currentIndex && isRaceActive) {
-        className = 'current-char';
+  // Render each character with color & highlights
+  const renderText = () =>
+    text.split('').map((char, idx) => {
+      let base = 'untyped-char';
+      if (idx < userInput.length) {
+        base =
+          userInput[idx] === char
+            ? 'correct-char'
+            : 'incorrect-char';
+      } else if (idx === currentIndex && isRaceActive) {
+        base = 'current-char';
       }
 
-      // Add special styling for word boundaries and error indication
-      const charWordStart = findWordStart(index);
-      const charWordEnd = findWordEnd(charWordStart);
-      const isCurrentWord = index >= currentWordStartIndex && index < findWordEnd(currentWordStartIndex);
-      
-      // Check if this word has errors (real-time)
-      const wordTypedSoFar = userInput.slice(charWordStart, Math.min(userInput.length, charWordEnd));
-      const wordInText = text.slice(charWordStart, charWordEnd);
-      const wordHasError = wordTypedSoFar.length > 0 && !wordInText.startsWith(wordTypedSoFar);
-      
-      // Check if word is completed correctly
-      const isWordCompleted = index < lastCompletedWordIndex;
-      const isWordCorrectlyCompleted = isWordCompleted && 
-        text.slice(charWordStart, charWordEnd) === userInput.slice(charWordStart, charWordEnd);
-      
+      const ws = findWordStart(idx);
+      const we = findWordEnd(ws);
+      const inCurrent =
+        idx >= currentWordStartIndex && idx < we;
+      const typedSoFar = userInput.slice(
+        ws,
+        Math.min(userInput.length, we)
+      );
+      const actual = text.slice(ws, we);
+      const hasError =
+        typedSoFar.length > 0 &&
+        !actual.startsWith(typedSoFar);
+      const completed = idx < lastCompletedWordIndex;
+      const correctCompleted =
+        completed &&
+        text.slice(ws, we) === userInput.slice(ws, we);
+
       return (
-        <span 
-          key={index} 
+        <span
+          key={idx}
           className={cn(
-            className,
-            isCurrentWord && index >= currentIndex && 'bg-blue-50 dark:bg-blue-900/20',
-            isWordCorrectlyCompleted && 'opacity-60',
-            wordHasError && index < userInput.length && 'bg-red-50 dark:bg-red-900/20'
+            base,
+            inCurrent &&
+              idx >= currentIndex &&
+              '',
+            correctCompleted && 'opacity-60',
+            hasError &&
+              idx < userInput.length &&
+              ''
           )}
         >
           {char}
         </span>
       );
     });
-  };
 
   if (!text) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
-        <div className="text-center text-gray-500 dark:text-gray-400">
+      <Card>
+        <CardContent className="text-center text-black">
           Waiting for race to load...
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-      <div className="mb-6">
-        <div 
+    <Card>
+      <CardContent className="space-y-6">
+        {/* Text Display */}
+        <div
           className={cn(
-            "typing-text p-6 bg-gray-50 dark:bg-gray-700 rounded-lg min-h-32 leading-relaxed",
-            !isRaceActive && "opacity-60"
+            'p-6 font-mono text-lg leading-relaxed whitespace-pre-wrap break-words',
+            !isRaceActive && 'opacity-60'
           )}
         >
           {renderText()}
           {isRaceActive && currentIndex === text.length && (
-            <span className="typing-cursor">|</span>
+            <span className="animate-pulse">|</span>
           )}
         </div>
-      </div>
 
-      {/* Private Room Host Controls */}
-      {isPrivateRoom && isHost && !isRaceActive && countdown === 0 && (
-        <div className="mb-6 text-center">
-          <button
-            onClick={startPrivateRace}
-            disabled={players.length < 2}
-            className={cn(
-              "px-8 py-3 rounded-lg font-semibold text-white transition-colors",
-              players.length >= 2
-                ? "bg-green-600 hover:bg-green-700 focus:ring-2 focus:ring-green-500"
-                : "bg-gray-400 cursor-not-allowed"
-            )}
-          >
-            {players.length < 2 ? 'Waiting for more players...' : 'Start Race'}
-          </button>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {players.length < 2 
-              ? `Need at least 2 players to start (${players.length}/2)`
-              : 'Click to start the race for all players'
-            }
-          </p>
-        </div>
-      )}
-
-      {/* Waiting message for non-host players in private rooms */}
-      {isPrivateRoom && !isHost && !isRaceActive && countdown === 0 && (
-        <div className="mb-6 text-center">
-          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <p className="text-blue-600 dark:text-blue-400 font-medium">
-              Waiting for host to start the race...
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {players.length}/2+ players ready
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Countdown display */}
-      {countdown > 0 && (
-        <div className="mb-6 text-center">
-          <div className="text-6xl font-bold text-blue-600 dark:text-blue-400">
-            {countdown}
-          </div>
-          <p className="text-gray-500 dark:text-gray-400">Race starting...</p>
-        </div>
-      )}
-
-      <div className="relative">
-        <textarea
-          ref={inputRef}
-          value={userInput}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          disabled={!isRaceActive}
-          placeholder={isRaceActive ? "Start typing..." : "Race will start soon..."}
-          className={cn(
-            "w-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg resize-none",
-            "bg-white dark:bg-gray-700 text-gray-900 dark:text-white",
-            "placeholder-gray-500 dark:placeholder-gray-400",
-            "focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-            !isRaceActive && "cursor-not-allowed opacity-60"
+        {/* Host Start Button */}
+        {isPrivateRoom &&
+          isHost &&
+          !isRaceActive &&
+          countdown === 0 && (
+            <div className="text-center space-y-2">
+              <Button
+                onClick={startPrivateRace}
+                disabled={players.length < 2}
+                className={cn(
+                  'px-8 py-3 font-semibold text-white',
+                  players.length >= 2
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-gray-400 cursor-not-allowed'
+                )}
+              >
+                {players.length < 2
+                  ? 'Waiting for more players...'
+                  : 'Start Race'}
+              </Button>
+              <p className="text-sm text-black">
+                {players.length < 2
+                  ? `Need at least 2 players (${players.length}/2)`
+                  : 'Click to start the race'}
+              </p>
+            </div>
           )}
-          rows={4}
-          spellCheck={false}
-          autoCorrect="off"
-          autoCapitalize="off"
-        />
-        
-        {isRaceActive && (
-          <div className="absolute bottom-4 right-4 text-sm text-gray-500 dark:text-gray-400">
-            {currentIndex}/{text.length}
+
+        {/* Waiting for Host */}
+        {isPrivateRoom &&
+          !isHost &&
+          !isRaceActive &&
+          countdown === 0 && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center">
+              <p className="text-blue-600 dark:text-blue-400 font-medium">
+                Waiting for host to start the race...
+              </p>
+              <p className="mt-1 text-sm text-black">
+                {players.length}/2+ players ready
+              </p>
+            </div>
+          )}
+
+        {/* Countdown */}
+        {countdown > 0 && (
+          <div className="text-center space-y-1">
+            <div className="text-6xl font-bold text-blue-600 dark:text-blue-400">
+              {countdown}
+            </div>
+            <p className="text-black">
+              Race starting...
+            </p>
           </div>
         )}
-      </div>
 
-      {isRaceActive && (
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {wpm}
+        {/* Input Area */}
+        <div className="relative">
+          <Textarea
+            ref={inputRef}
+            value={userInput}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            disabled={!isRaceActive}
+            placeholder={
+              isRaceActive
+                ? 'Start typing...'
+                : 'Race will start soon...'
+            }
+            className="font-mono text-lg resize-none"
+            rows={4}
+          />
+          {isRaceActive && (
+            <div className="absolute bottom-2 right-3 text-sm text-black">
+              {currentIndex}/{text.length}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">WPM</div>
-          </div>
-          <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {accuracy}%
+          )}
+        </div>
+
+        {/* Live Stats */}
+        {isRaceActive && (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {wpm}
+              </div>
+              <div className="text-sm text-black">
+                WPM
+              </div>
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Accuracy</div>
+            <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                {accuracy}%
+              </div>
+              <div className="text-sm text-black">
+                Accuracy
+              </div>
+            </div>
           </div>
-        </div>
-      )}
-      
-      {/* Help text for typing rules */}
-      {isRaceActive && (
-        <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 text-center">
-          💡 Press space to jump to the next word. Backspace freely to fix any errors.
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* Help Text */}
+        {isRaceActive && (
+          <p className="text-center text-xs text-black">
+            💡 Press space to jump to the next word. Backspace freely to fix errors.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

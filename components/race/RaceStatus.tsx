@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 
 import { useRaceStore } from '@/store/race.store';
 import { FiClock, FiPlay } from 'react-icons/fi';
@@ -6,9 +6,10 @@ import { FiClock, FiPlay } from 'react-icons/fi';
 export default function RaceStatus() {
   const { countdown, isRaceActive, raceId, players } = useRaceStore();
 
+  // Connecting state
   if (!raceId) {
     return (
-      <div className="text-center py-8">
+      <div className="py-8 text-center">
         <div className="text-gray-500 dark:text-gray-400">
           Connecting to race...
         </div>
@@ -16,53 +17,57 @@ export default function RaceStatus() {
     );
   }
 
+  // Countdown before start
   if (countdown > 0) {
     return (
-      <div className="text-center py-12">
-        <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center neon-glow">
-          <div className="text-3xl font-bold text-white">
+      <div className="py-8 flex flex-col items-center space-y-4">
+        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg">
+          <span className="text-4xl font-bold text-white">
             {countdown}
-          </div>
+          </span>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+        <div className="text-2xl font-bold text-black dark:text-white">
           Race Starting Soon!
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400">
+        </div>
+        <div className="text-sm text-gray-600 dark:text-gray-400">
           Get ready to type...
-        </p>
+        </div>
       </div>
     );
   }
 
+  // Active race state
   if (isRaceActive) {
     return (
-      <div className="text-center py-8">
-        <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400 mb-2">
-          <FiPlay className="w-5 h-5" />
-          <span className="font-semibold">Race in Progress</span>
+      <div className="py-8 flex flex-col items-center space-y-2">
+        <div className="flex items-center gap-2 text-green-600">
+          <FiPlay className="h-5 w-5" />
+          <span className="text-xl font-bold text-black dark:text-white">
+            Race in Progress
+          </span>
         </div>
-        <p className="text-gray-600 dark:text-gray-400">
+        <div className="text-sm text-gray-600 dark:text-gray-400">
           Type as fast and accurately as you can!
-        </p>
+        </div>
       </div>
     );
   }
 
+  // Waiting for players
   return (
-    <div className="text-center py-8">
-      <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-        <FiClock className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+    <div className="py-8 flex flex-col items-center space-y-4">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900 shadow">
+        <FiClock className="h-8 w-8 text-blue-600 dark:text-blue-400" />
       </div>
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+      <div className="text-xl font-bold text-black dark:text-white">
         Waiting for Players
-      </h2>
-      <p className="text-gray-600 dark:text-gray-400 mb-4">
-        {players.length < 2 ? 
-          'Need at least 2 players to start the race' : 
-          'Race will start automatically'
-        }
-      </p>
-      <div className="text-sm text-gray-500 dark:text-gray-400">
+      </div>
+      <div className="text-sm text-gray-600 dark:text-gray-400">
+        {players.length < 2
+          ? 'Need at least 2 players to start the race'
+          : 'Race will start automatically'}
+      </div>
+      <div className="text-xs text-gray-500 dark:text-gray-400">
         Race ID: <span className="font-mono font-semibold">{raceId}</span>
       </div>
     </div>

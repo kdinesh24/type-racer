@@ -2,7 +2,8 @@
 
 import { useRaceStore } from '@/store/race.store';
 import { cn, getWPMColor, getAccuracyColor } from '@/lib/utils';
-import { FiUsers, FiZap, FiTarget } from 'react-icons/fi';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Users, Zap, Target } from 'lucide-react';
 
 export default function PlayersList() {
   const { players, isRaceActive } = useRaceStore();
@@ -17,23 +18,22 @@ export default function PlayersList() {
   });
 
   return (
-    <div className="glass-enhanced rounded-2xl shadow-lg p-6 border border-gray-200">
-      <div className="flex items-center gap-2 mb-4">
-        <FiUsers className="w-5 h-5 text-blue-600" />
-        <h2 className="text-xl font-bold text-gray-800 font-display text-clean">
+    <Card className="bg-white">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-black">
+          <Users className="w-5 h-5" />
           Players ({players.length})
-        </h2>
-      </div>
-
-      <div className="space-y-3">
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
         {sortedPlayers.map((player, index) => (
           <div
             key={`${player.id}-${player.username}-${index}`}
             className={cn(
               "flex items-center justify-between p-4 rounded-lg border transition-all",
               player.finished
-                ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
-                : "bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600"
+                ? "bg-white border-green-200"
+                : "bg-white border-gray-200"
             )}
           >
             <div className="flex items-center gap-3">
@@ -46,19 +46,19 @@ export default function PlayersList() {
                 {player.finished ? player.position : index + 1}
               </div>
               <div>
-                <div className="font-semibold text-gray-900 dark:text-white">
+                <div className="font-semibold text-black">
                   {player.username}
                 </div>
                 {isRaceActive && (
                   <div className="flex items-center gap-4 text-sm">
                     <div className="flex items-center gap-1">
-                      <FiZap className="w-3 h-3" />
+                      <Zap className="w-3 h-3" />
                       <span className={getWPMColor(player.wpm)}>
                         {player.wpm} WPM
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <FiTarget className="w-3 h-3" />
+                      <Target className="w-3 h-3" />
                       <span className={getAccuracyColor(player.accuracy)}>
                         {player.accuracy}%
                       </span>
@@ -70,13 +70,13 @@ export default function PlayersList() {
 
             {isRaceActive && (
               <div className="text-right">
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                <div className="text-sm text-black mb-1">
                   Progress
                 </div>
-                <div className="w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                <div className="w-24 bg-gray-200 rounded-full h-2">
                   <div
                     className={cn(
-                      "h-2 rounded-full transition-all duration-300 progress-bar",
+                      "h-2 rounded-full transition-all duration-300",
                       player.finished
                         ? "bg-green-500"
                         : "bg-blue-500"
@@ -84,20 +84,20 @@ export default function PlayersList() {
                     style={{ width: `${Math.min(player.progress, 100)}%` }}
                   />
                 </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <div className="text-xs text-black mt-1">
                   {Math.round(player.progress)}%
                 </div>
               </div>
             )}
           </div>
         ))}
-      </div>
 
-      {players.length === 0 && (
-        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          No players yet. Waiting for players to join...
-        </div>
-      )}
-    </div>
+        {players.length === 0 && (
+          <div className="text-center py-8 text-black">
+            No players yet. Waiting for players to join...
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

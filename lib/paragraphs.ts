@@ -7,7 +7,7 @@ export const paragraphs = [
   
   "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity.",
   
-  "Call me Ishmael. Some years ago—never mind how long precisely—having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little.",
+  "Call me Ishmael. Some years ago never mind how long precisely—having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little.",
   
   "Yesterday is history, tomorrow is a mystery, but today is a gift. That is why it is called the present. We must learn to live in the moment and appreciate what we have.",
   
