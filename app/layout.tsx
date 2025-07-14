@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import ErrorBoundary from "@/components/ErrorBoundary";
-import NavigationGuard from "@/components/NavigationGuard";
+import ClientLayout from "@/components/layout/ClientLayout";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,10 +18,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} antialiased`}>
-        <NavigationGuard />
-        <ErrorBoundary>
+        <ClientLayout>
           {children}
-        </ErrorBoundary>
+        </ClientLayout>
       </body>
     </html>
   );

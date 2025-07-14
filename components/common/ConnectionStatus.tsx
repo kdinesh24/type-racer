@@ -11,12 +11,15 @@ export default function ConnectionStatus({ isConnected }: ConnectionStatusProps)
   const [showStatus, setShowStatus] = useState(false);
 
   useEffect(() => {
+    // Show status immediately on connection changes
     setShowStatus(true);
     
     if (isConnected) {
-      const timer = setTimeout(() => setShowStatus(false), 3000);
+      // Hide success message after 2 seconds instead of 3
+      const timer = setTimeout(() => setShowStatus(false), 2000);
       return () => clearTimeout(timer);
     }
+    // Keep disconnected message visible until reconnected
   }, [isConnected]);
 
   if (!showStatus) return null;

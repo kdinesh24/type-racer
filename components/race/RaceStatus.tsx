@@ -1,6 +1,6 @@
-'use client';
+ 'use client';
 
-import { useRaceStore } from '@/lib/store';
+import { useRaceStore } from '@/store/race.store';
 import { FiClock, FiPlay } from 'react-icons/fi';
 
 export default function RaceStatus() {

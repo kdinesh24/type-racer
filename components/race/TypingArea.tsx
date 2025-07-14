@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRaceStore } from '@/lib/store';
+import { useRaceStore } from '@/store/race.store';
 import { useTypingStats } from '@/hooks/useSocket';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +17,19 @@ export default function TypingArea() {
     countdown,
     startPrivateRace 
   } = useRaceStore();
+
+  // Debug logging only when significant values change
+  useEffect(() => {
+    console.log('🎮 TypingArea - Host status changed:', {
+      isPrivateRoom,
+      isHost,
+      playersLength: players.length,
+      isRaceActive,
+      countdown,
+      shouldShowStartButton: isPrivateRoom && isHost && !isRaceActive && countdown === 0
+    });
+  }, [isPrivateRoom, isHost, players.length, isRaceActive, countdown]);
+
   const [userInput, setUserInput] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [lastCompletedWordIndex, setLastCompletedWordIndex] = useState(0);

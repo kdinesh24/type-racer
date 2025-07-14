@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FiX, FiPlus, FiHash, FiCopy } from 'react-icons/fi';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +10,7 @@ interface RoomModalProps {
   onCreateRoom: () => void;
   onJoinRoom: (roomCode: string) => void;
   currentRoomCode?: string;
+  initialAction?: 'choose' | 'create' | 'join'; // Add support for initial action
 }
 
 export default function RoomModal({ 
@@ -17,10 +18,19 @@ export default function RoomModal({
   onClose, 
   onCreateRoom, 
   onJoinRoom,
-  currentRoomCode 
+  currentRoomCode,
+  initialAction = 'choose' // Default to choose, but allow override
 }: RoomModalProps) {
-  const [action, setAction] = useState<'choose' | 'create' | 'join'>('choose');
+  const [action, setAction] = useState<'choose' | 'create' | 'join'>(initialAction);
   const [joinCode, setJoinCode] = useState('');
+
+  // Reset action when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setAction(initialAction);
+      setJoinCode('');
+    }
+  }, [isOpen, initialAction]);
 
   if (!isOpen) return null;
 
@@ -32,6 +42,10 @@ export default function RoomModal({
   const handleJoinRoom = () => {
     if (joinCode.trim().length === 5) {
       onJoinRoom(joinCode.trim().toUpperCase());
+      resetModal(); // Reset modal state after successful join
+    } else {
+      // Add user feedback for invalid room code
+      console.error('Invalid room code length:', joinCode.length);
     }
   };
 

@@ -19,19 +19,32 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"]
+    origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    methods: ["GET", "POST"],
+    credentials: true
   },
-  // Optimize for higher concurrent connections
+  // Optimize for higher concurrent connections with websocket preference
   pingTimeout: 60000,      // 60 seconds before disconnect
   pingInterval: 25000,     // Ping every 25 seconds
   maxHttpBufferSize: 1e6,  // 1MB max message size
-  transports: ['websocket', 'polling'], // Allow fallback to polling
-  allowEIO3: true          // Better compatibility
+  transports: ['websocket'], // Prefer websocket only for better performance
+  upgradeTimeout: 30000,   // 30 seconds for upgrade timeout
+  allowEIO3: true,         // Better compatibility
+  connectTimeout: 45000    // 45 seconds connection timeout
 });
 
 app.use(cors());
 app.use(express.json());
+
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'Server is running', 
+    timestamp: new Date().toISOString(),
+    activeConnections,
+    totalRaces: races.size 
+  });
+});
 
 interface Player {
   id: string;
@@ -53,6 +66,7 @@ interface Race {
   isFinished?: boolean;
   isPrivate?: boolean;
   hostId?: string;
+  lastActivity?: number; // Add timestamp for cleanup
 }
 
 const races = new Map<string, Race>();
@@ -103,7 +117,10 @@ io.on('connection', (socket: Socket) => {
   activeConnections++;
   peakConnections = Math.max(peakConnections, activeConnections);
   
-  console.log(`User connected: ${socket.id} | Active: ${activeConnections} | Peak: ${peakConnections} | Races: ${races.size}`);
+  console.log(`✅ User connected: ${socket.id} | Active: ${activeConnections} | Peak: ${peakConnections} | Races: ${races.size} | Time: ${new Date().toISOString()}`);
+
+  // Send immediate confirmation of connection
+  socket.emit('connection-confirmed', { message: 'Successfully connected to server' });
 
   socket.on('join-race', (data: { username: string; raceId?: string; isPrivate?: boolean }) => {
     const { username, raceId, isPrivate } = data;
@@ -118,8 +135,8 @@ io.on('connection', (socket: Socket) => {
         socket.to(existingRaceId).emit('player-left', socket.id);
         socket.leave(existingRaceId);
         
-        // Clean up empty races
-        if (existingRace.players.size === 0) {
+        // Clean up empty races - but don't delete private rooms
+        if (existingRace.players.size === 0 && !existingRace.isPrivate) {
           races.delete(existingRaceId);
         }
       }
@@ -131,9 +148,18 @@ io.on('connection', (socket: Socket) => {
 
     // Handle joining existing private room
     if (raceId && isPrivate) {
-      // For private rooms, normalize the room code to uppercase
+      // For private rooms, normalize the room code to uppercase and validate format
       const normalizedRoomCode = raceId.toUpperCase();
+      
+      // Validate room code format (5 alphanumeric characters)
+      if (!/^[A-Z0-9]{5}$/.test(normalizedRoomCode)) {
+        console.log('Invalid room code format:', raceId);
+        socket.emit('race-error', 'Invalid room code format. Room codes must be 5 characters.');
+        return;
+      }
+      
       console.log('Looking for private room:', normalizedRoomCode);
+      console.log('Available races:', Array.from(races.keys()));
       
       // Check if the room exists
       if (races.has(normalizedRoomCode)) {
@@ -149,8 +175,9 @@ io.on('connection', (socket: Socket) => {
           return;
         }
         
-        // Check if room is full (max 5 players)
-        if (race.players.size >= 5) {
+        // Check if room is full (max 5 players) - but don't count if user is rejoining
+        const existingPlayer = Array.from(race.players.values()).find(p => p.username === username);
+        if (race.players.size >= 5 && !existingPlayer) {
           console.log('Room is full:', normalizedRoomCode);
           socket.emit('race-error', 'Room is full (max 5 players)');
           return;
@@ -205,28 +232,77 @@ io.on('connection', (socket: Socket) => {
           countdown: 0,
           isFinished: false,
           isPrivate: isPrivate || false,
-          hostId: isPrivate ? socket.id : undefined
+          hostId: isPrivate ? socket.id : undefined,
+          lastActivity: Date.now()
         };
         races.set(newRaceId, race);
       }
     }
 
-    // Add player to race
-    const player: Player = {
-      id: socket.id,
-      username,
-      progress: 0,
-      wpm: 0,
-      accuracy: 100,
-      finished: false,
-      position: 0
-    };
+    // Add player to race - handle rejoining for private rooms
+    let player: Player;
+    let isRejoining = false;
+    
+    // For private rooms, check if player is rejoining (same username exists)
+    if (race.isPrivate) {
+      let existingPlayerEntry = null;
+      for (const [socketId, playerData] of race.players.entries()) {
+        if (playerData.username === username) {
+          existingPlayerEntry = { socketId, playerData };
+          break;
+        }
+      }
+      
+      if (existingPlayerEntry) {
+        console.log('Player rejoining private room:', username, 'old socket:', existingPlayerEntry.socketId, 'new socket:', socket.id);
+        isRejoining = true;
+        
+        // Remove old socket mapping
+        race.players.delete(existingPlayerEntry.socketId);
+        
+        // Update player with new socket ID but keep other data
+        player = {
+          ...existingPlayerEntry.playerData,
+          id: socket.id
+        };
+      } else {
+        // New player joining
+        console.log('New player joining private room:', username);
+        player = {
+          id: socket.id,
+          username,
+          progress: 0,
+          wpm: 0,
+          accuracy: 100,
+          finished: false,
+          position: 0
+        };
+      }
+    } else {
+      // For public rooms, always create new player
+      player = {
+        id: socket.id,
+        username,
+        progress: 0,
+        wpm: 0,
+        accuracy: 100,
+        finished: false,
+        position: 0
+      };
+    }
 
     race.players.set(socket.id, player);
     playerRaces.set(socket.id, targetRaceId!);
     socket.join(targetRaceId!);
+    
+    // Update activity timestamp for private rooms
+    if (race.isPrivate) {
+      race.lastActivity = Date.now();
+    }
 
-    console.log('Player joined:', username, 'to race:', targetRaceId, 'total players:', race.players.size);
+    console.log(isRejoining ? 'Player rejoined:' : 'Player joined:', username, 'to race:', targetRaceId, 'total players:', race.players.size);
+    console.log('All players in race:', Array.from(race.players.values()).map(p => ({ id: p.id, username: p.username })));
+    console.log('Socket rooms for', socket.id, ':', Array.from(socket.rooms));
 
     socket.emit('race-joined', {
       raceId: targetRaceId!,
@@ -236,8 +312,21 @@ io.on('connection', (socket: Socket) => {
       isHost: race.hostId === socket.id
     });
 
-    socket.to(targetRaceId!).emit('player-joined', player);
+    console.log('Race-joined emitted to', socket.id, 'with isHost:', race.hostId === socket.id, 'hostId:', race.hostId);
+    
+    // Broadcast updated player list to ALL players in the room (including the one who just joined)
+    const currentPlayers = Array.from(race.players.values());
+    console.log('Emitting players-updated to room:', targetRaceId, 'with', currentPlayers.length, 'players');
+    io.to(targetRaceId!).emit('players-updated', {
+      players: currentPlayers
+    });
 
+    // Also emit player-joined event to notify existing players
+    if (!isRejoining) {
+      console.log('Emitting player-joined to other players in room:', targetRaceId);
+      socket.to(targetRaceId!).emit('player-joined', player);
+    }
+    
     // Start countdown if we have enough players and it's NOT a private room
     if (race.players.size >= 2 && !race.isActive && race.countdown === 0 && !race.isPrivate) {
       startCountdown(targetRaceId!);
@@ -369,12 +458,20 @@ io.on('connection', (socket: Socket) => {
         race.players.delete(socket.id);
         socket.to(raceId).emit('player-left', socket.id);
         socket.leave(raceId);
+        
+        // Update activity timestamp for private rooms when someone leaves
+        if (race.isPrivate) {
+          race.lastActivity = Date.now();
+        }
 
         // Check player count after someone leaves
         if (race.players.size === 0) {
-          races.delete(raceId);
-        } else if (race.players.size === 1) {
-          // IMPORTANT: If only 1 player left, kick them out and close the room
+          // Don't delete private rooms when empty - they should persist for rejoining
+          if (!race.isPrivate) {
+            races.delete(raceId);
+          }
+        } else if (race.players.size === 1 && !race.isPrivate) {
+          // Only kick out remaining player for public rooms, not private rooms
           const remainingPlayerId = Array.from(race.players.keys())[0];
           const remainingPlayer = race.players.get(remainingPlayerId);
           
@@ -395,32 +492,39 @@ io.on('connection', (socket: Socket) => {
 
   socket.on('disconnect', () => {
     activeConnections--;
-    console.log(`User disconnected: ${socket.id} | Active: ${activeConnections}`);
+    console.log(`❌ User disconnected: ${socket.id} | Active: ${activeConnections} | Time: ${new Date().toISOString()}`);
     
     const raceId = playerRaces.get(socket.id);
     if (raceId) {
       const race = races.get(raceId);
       if (race) {
-        race.players.delete(socket.id);
-        socket.to(raceId).emit('player-left', socket.id);
+        // Always remove from socket-to-race mapping
+        playerRaces.delete(socket.id);
+        
+        if (race.isPrivate) {
+          // For private rooms, don't remove players - just update activity
+          race.lastActivity = Date.now();
+          console.log('Player disconnected from private room but kept in room:', socket.id);
+          
+          // Notify other players that this player disconnected (but they're still in the room)
+          socket.to(raceId).emit('player-disconnected', socket.id);
+        } else {
+          // For public rooms, remove the player completely
+          race.players.delete(socket.id);
+          socket.to(raceId).emit('player-left', socket.id);
 
-        // Check player count after disconnect
-        if (race.players.size === 0) {
-          races.delete(raceId);
-        } else if (race.players.size === 1) {
-          // IMPORTANT: If only 1 player left, kick them out and close the room
-          const remainingPlayerId = Array.from(race.players.keys())[0];
-          const remainingPlayer = race.players.get(remainingPlayerId);
-          
-          // Remove the remaining player from race
-          race.players.delete(remainingPlayerId);
-          playerRaces.delete(remainingPlayerId);
-          
-          // Notify the remaining player that the room is closed
-          io.to(remainingPlayerId).emit('race-error', 'Room closed - not enough players. Please join a new race.');
-          
-          // Delete the empty race
-          races.delete(raceId);
+          // Check player count after disconnect for public rooms only
+          if (race.players.size === 0) {
+            races.delete(raceId);
+          } else if (race.players.size === 1) {
+            const remainingPlayerId = Array.from(race.players.keys())[0];
+            
+            race.players.delete(remainingPlayerId);
+            playerRaces.delete(remainingPlayerId);
+            
+            io.to(remainingPlayerId).emit('race-error', 'Room closed - not enough players. Please join a new race.');
+            races.delete(raceId);
+          }
         }
       }
       playerRaces.delete(socket.id);
@@ -481,7 +585,62 @@ function endRace(raceId: string) {
   }, 30000);
 }
 
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Clean up inactive private rooms every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  const PRIVATE_ROOM_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+  
+  for (const [raceId, race] of races.entries()) {
+    if (race.isPrivate && 
+        race.players.size === 0 && 
+        race.lastActivity && 
+        (now - race.lastActivity) > PRIVATE_ROOM_TIMEOUT) {
+      
+      console.log(`Cleaning up inactive private room: ${raceId}`);
+      races.delete(raceId);
+    }
+  }
+}, 5 * 60 * 1000); // Check every 5 minutes
+
+// Debug endpoint to check room state
+app.get('/debug/rooms', (req, res) => {
+  const roomsData = Array.from(races.entries()).map(([id, race]) => ({
+    id,
+    playerCount: race.players.size,
+    players: Array.from(race.players.values()).map(p => ({ id: p.id, username: p.username })),
+    isPrivate: race.isPrivate,
+    hostId: race.hostId
+  }));
+  
+  res.json({
+    totalRooms: races.size,
+    rooms: roomsData,
+    totalConnections: activeConnections
+  });
+});
+
+app.get('/debug/room/:roomId', (req, res) => {
+  const roomId = req.params.roomId.toUpperCase();
+  const race = races.get(roomId);
+  
+  if (!race) {
+    return res.status(404).json({ error: 'Room not found' });
+  }
+  
+  res.json({
+    id: race.id,
+    playerCount: race.players.size,
+    players: Array.from(race.players.values()).map(p => ({ id: p.id, username: p.username })),
+    isPrivate: race.isPrivate,
+    hostId: race.hostId,
+    socketsInRoom: io.sockets.adapter.rooms.get(roomId)?.size || 0
+  });
+});
+
+const PORT = process.env.PORT || 3003;
+server.listen(Number(PORT), 'localhost', () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Socket.IO server ready for connections`);
+}).on('error', (err) => {
+  console.error('Server failed to start:', err);
 });

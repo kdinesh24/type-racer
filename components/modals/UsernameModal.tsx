@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRaceStore } from '@/lib/store';
+import { useRaceStore } from '@/store/race.store';
 import { FiUser, FiPlay } from 'react-icons/fi';
 
 interface UsernameModalProps {

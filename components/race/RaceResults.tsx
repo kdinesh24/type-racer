@@ -1,6 +1,6 @@
 'use client';
 
-import { useRaceStore } from '@/lib/store';
+import { useRaceStore } from '@/store/race.store';
 import { cn, getWPMColor, getAccuracyColor } from '@/lib/utils';
 import { FiAward, FiRefreshCw, FiX } from 'react-icons/fi';
 

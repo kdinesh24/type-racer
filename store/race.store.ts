@@ -48,6 +48,7 @@ interface RaceActions {
   endRace: (results: Player[]) => void;
   updateTypingProgress: (position: number, wpm: number, accuracy: number) => void;
   resetRace: () => void;
+  setPlayers: (players: Player[]) => void;
 }
 
 export const useRaceStore = create<RaceState & RaceActions>((set, get) => ({
@@ -82,8 +83,10 @@ export const useRaceStore = create<RaceState & RaceActions>((set, get) => ({
 
   joinPrivateRoom: (roomCode) => {
     const { socket, username } = get();
-    if (socket && username) {
-      socket.emit('join-race', { username, raceId: roomCode, isPrivate: true });
+    if (socket && username && roomCode && roomCode.trim().length === 5) {
+      socket.emit('join-race', { username, raceId: roomCode.trim().toUpperCase(), isPrivate: true });
+    } else {
+      console.error('Invalid room code or missing credentials:', { roomCode, username, socketConnected: !!socket });
     }
   },
 
@@ -126,9 +129,19 @@ export const useRaceStore = create<RaceState & RaceActions>((set, get) => ({
     return { players: updatedPlayers };
   }),
   
-  addPlayer: (player) => set((state) => ({
-    players: [...state.players, player]
-  })),
+  addPlayer: (player) => set((state) => {
+    // Check if player already exists to prevent duplicates
+    const existingPlayerIndex = state.players.findIndex(p => p.id === player.id);
+    if (existingPlayerIndex !== -1) {
+      // Update existing player
+      const updatedPlayers = [...state.players];
+      updatedPlayers[existingPlayerIndex] = player;
+      return { players: updatedPlayers };
+    } else {
+      // Add new player
+      return { players: [...state.players, player] };
+    }
+  }),
   
   removePlayer: (playerId) => set((state) => ({
     players: state.players.filter(player => player.id !== playerId)
@@ -219,5 +232,7 @@ export const useRaceStore = create<RaceState & RaceActions>((set, get) => ({
     raceResults: null,
     isPrivateRoom: false,
     isHost: false
-  })
+  }),
+  
+  setPlayers: (players) => set({ players })
 }));

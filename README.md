@@ -1,19 +1,24 @@
 # TypeRace - Real-time Competitive Typing
 
-A modern, competitive typing race application built with Next.js, TypeScript, and Socket.io. Experience real-time multiplayer typing races with a beautiful, responsive interface.
+A modern, competitive typing race application built with Next.js, TypeScript, and Socket.io. Experience real-time multiplayer typing races with a beautiful, responsive interface and clean architecture.
+
+> 🏗️ **Recently Refactored**: This codebase has been completely restructured with modern architecture patterns. See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed information about the new structure.
 
 ## 🚀 Features
 
 ### Core Functionality
 - **Real-time multiplayer racing** - Compete with other players simultaneously
+- **Practice Mode** - Solo practice sessions to improve your typing skills
+- **Global Races** - Join worldwide competitions with instant matchmaking
+- **Private Rooms** - Create custom rooms and race with friends
 - **Live statistics** - Real-time WPM (Words Per Minute) and accuracy tracking
 - **Dynamic text generation** - Various text sources including quotes and paragraphs
-- **Race matching** - Automatic matchmaking with other players
 - **Progress tracking** - Visual progress bars and live race updates
 
 ### User Experience
+- **Clear Navigation** - Intuitive navigation with tooltips and clear indicators
+- **Separate Routes** - Dedicated pages for each game mode
 - **Modern UI/UX** - Clean, minimalist design with smooth animations
-- **Dark mode support** - Toggle between light and dark themes
 - **Responsive design** - Optimized for desktop, tablet, and mobile devices
 - **Real-time feedback** - Color-coded typing feedback (correct/incorrect characters)
 - **Countdown system** - Automated race start with countdown timer
