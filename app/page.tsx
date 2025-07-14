@@ -1,15 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useRaceStore } from '@/store/race.store';
-import ConnectionStatus from '@/components/common/ConnectionStatus';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FiZap, FiTarget, FiUsers, FiPlay, FiTrendingUp } from 'react-icons/fi';
 
 export default function Home() {
-  const { isConnected } = useRaceStore();
-
+  // Don't initialize socket on homepage, just show a simple status
   const gameMode = [
     {
       title: 'Practice Mode',
@@ -39,11 +36,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
-      {/* Connection Status */}
-      <div className="fixed top-4 right-4 z-50">
-        <ConnectionStatus isConnected={isConnected} />
-      </div>
-
       {/* Hero Section */}
       <section className="py-20 px-4">
         <div className="container mx-auto text-center">
@@ -115,7 +107,7 @@ export default function Home() {
                     <Link href={mode.href} className="block">
                       <Button 
                         className={`w-full bg-gradient-to-r ${mode.color} hover:shadow-lg transition-all duration-300 text-white border-0`}
-                        disabled={!isConnected && mode.href !== '/practice'}
+                        disabled={false} // All modes are always available
                       >
                         <FiPlay className="w-4 h-4 mr-2" />
                         Start {mode.title}

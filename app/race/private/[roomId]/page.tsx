@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useSocket } from '@/hooks/useSocket';
 import { useRaceStore } from '@/store/race.store';
-import UsernameModal from '@/components/modals/UsernameModal';
 import RaceStatus from '@/components/race/RaceStatus';
 import TypingArea from '@/components/race/TypingArea';
 import PlayersList from '@/components/race/PlayersList';
@@ -13,17 +13,17 @@ import ConnectionStatus from '@/components/common/ConnectionStatus';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FiUsers, FiPlay, FiCopy, FiCheck, FiHash } from 'react-icons/fi';
+import { getUserDisplayName } from '@/lib/auth-utils';
 
 export default function PrivateRoomPage() {
   const params = useParams();
   const router = useRouter();
   const roomId = params.roomId as string;
+  const { data: session } = useSession();
   
-  const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [copied, setCopied] = useState(false);
   
   const { 
-    username, 
     raceId, 
     isConnected, 
     joinPrivateRoom,
@@ -32,25 +32,20 @@ export default function PrivateRoomPage() {
     isHost,
     players
   } = useRaceStore();
+
+  const username = getUserDisplayName(session);
   
   // Initialize socket connection
   useSocket();
 
-  // Show username modal if no username is set
+  // Join the room when connected
   useEffect(() => {
-    if (!username && isConnected) {
-      setShowUsernameModal(true);
-    }
-  }, [username, isConnected]);
-
-  // Join the room when username is available and connected
-  useEffect(() => {
-    if (username && isConnected && roomId && !raceId) {
+    if (isConnected && roomId && !raceId) {
       // Validate room ID format (should be 5 uppercase alphanumeric characters)
       const normalizedRoomId = roomId.toString().toUpperCase();
       if (normalizedRoomId.length === 5 && /^[A-Z0-9]{5}$/.test(normalizedRoomId)) {
         console.log('Private room page - attempting to join room:', normalizedRoomId);
-        joinPrivateRoom(normalizedRoomId);
+        joinPrivateRoom(username, normalizedRoomId);
       } else {
         console.error('Private room page - invalid room ID format:', roomId);
         // Redirect back to private room selection
@@ -58,11 +53,6 @@ export default function PrivateRoomPage() {
       }
     }
   }, [username, isConnected, roomId, raceId, joinPrivateRoom, router]);
-
-  const handleUsernameSet = () => {
-    setShowUsernameModal(false);
-    // Don't call joinPrivateRoom here - the useEffect will handle it
-  };
 
   const handleStartRace = () => {
     if (isHost) {
@@ -198,13 +188,6 @@ export default function PrivateRoomPage() {
             </Card>
           </div>
         </div>
-
-        {/* Username Modal */}
-        <UsernameModal
-          isOpen={showUsernameModal}
-          onClose={() => setShowUsernameModal(false)}
-          onSuccess={handleUsernameSet}
-        />
       </div>
     );
   }
@@ -258,13 +241,6 @@ export default function PrivateRoomPage() {
           <RaceResults />
         </div>
       </div>
-
-      {/* Username Modal */}
-      <UsernameModal
-        isOpen={showUsernameModal}
-        onClose={() => setShowUsernameModal(false)}
-        onSuccess={handleUsernameSet}
-      />
     </div>
   );
 }

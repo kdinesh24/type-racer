@@ -23,7 +23,6 @@ interface RaceState {
   accuracy: number;
   startTime: number | null;
   socket: Socket | null;
-  username: string;
   raceResults: Player[] | null;
   isPrivateRoom: boolean;
   isHost: boolean;
@@ -31,10 +30,9 @@ interface RaceState {
 
 interface RaceActions {
   setSocket: (socket: Socket | null) => void;
-  setUsername: (username: string) => void;
-  joinRace: (raceId?: string) => void;
-  joinPrivateRoom: (roomCode?: string) => void;
-  createPrivateRoom: () => void;
+  joinRace: (username: string, raceId?: string) => void;
+  joinPrivateRoom: (username: string, roomCode?: string) => void;
+  createPrivateRoom: (username: string) => void;
   startPrivateRace: () => void;
   requestRestart: () => void;
   clearResults: () => void;
@@ -64,7 +62,6 @@ export const useRaceStore = create<RaceState & RaceActions>((set, get) => ({
   accuracy: 100,
   startTime: null,
   socket: null,
-  username: '',
   raceResults: null,
   isPrivateRoom: false,
   isHost: false,
@@ -72,10 +69,8 @@ export const useRaceStore = create<RaceState & RaceActions>((set, get) => ({
   // Actions
   setSocket: (socket) => set({ socket, isConnected: socket !== null }),
   
-  setUsername: (username) => set({ username }),
-  
-  joinRace: (raceId) => {
-    const { socket, username } = get();
+  joinRace: (username, raceId) => {
+    const { socket } = get();
     
     // Prevent joining global races if we're on a private room page
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
@@ -90,8 +85,8 @@ export const useRaceStore = create<RaceState & RaceActions>((set, get) => ({
     }
   },
 
-  joinPrivateRoom: (roomCode) => {
-    const { socket, username } = get();
+  joinPrivateRoom: (username, roomCode) => {
+    const { socket } = get();
     if (socket && username && roomCode && roomCode.trim().length === 5) {
       const normalizedRoomCode = roomCode.trim().toUpperCase();
       console.log('🏠 Joining private room with code:', normalizedRoomCode, 'username:', username);
@@ -113,8 +108,8 @@ export const useRaceStore = create<RaceState & RaceActions>((set, get) => ({
     }
   },
 
-  createPrivateRoom: () => {
-    const { socket, username } = get();
+  createPrivateRoom: (username) => {
+    const { socket } = get();
     if (socket && username) {
       console.log('🏗️  Creating new private room for user:', username);
       socket.emit('join-race', { 

@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { useRaceStore } from '@/store/race.store';
-import UsernameModal from '@/components/modals/UsernameModal';
 import RaceStatus from '@/components/race/RaceStatus';
 import TypingArea from '@/components/race/TypingArea';
 import PlayersList from '@/components/race/PlayersList';
@@ -17,35 +16,21 @@ import {
   CardContent,
 } from '@/components/ui/card';
 import { FiUsers, FiPlay } from 'react-icons/fi';
+import { getUserDisplayName } from '@/lib/auth-utils';
 
 export default function GlobalRacePage() {
-  const [showUsernameModal, setShowUsernameModal] = useState(false);
+  const { data: session } = useSession();
   const {
-    username,
     raceId,
     isConnected,
     joinRace,
     leaveRace,
   } = useRaceStore();
 
-  // Prompt for username if not set
-  useEffect(() => {
-    if (!username && isConnected) {
-      setShowUsernameModal(true);
-    }
-  }, [username, isConnected]);
+  const username = getUserDisplayName(session);
 
   const handleJoinRace = () => {
-    if (username) {
-      joinRace();
-    } else {
-      setShowUsernameModal(true);
-    }
-  };
-
-  const handleUsernameSet = () => {
-    setShowUsernameModal(false);
-    joinRace();
+    joinRace(username);
   };
 
   const handleLeaveRace = () => {
@@ -75,14 +60,12 @@ export default function GlobalRacePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {username && (
-                <div className="text-center">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-2 text-sm font-medium text-green-800">
-                    <span className="h-2 w-2 rounded-full bg-green-500" />
-                    Playing as {username}
-                  </span>
-                </div>
-              )}
+              <div className="text-center">
+                <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-2 text-sm font-medium text-green-800">
+                  <span className="h-2 w-2 rounded-full bg-green-500" />
+                  Playing as {username}
+                </span>
+              </div>
               <div className="text-center">
                 <Button
                   onClick={handleJoinRace}
@@ -90,7 +73,7 @@ export default function GlobalRacePage() {
                   className="bg-gradient-to-r from-green-500 to-green-600 px-8 py-3 text-lg text-white hover:from-green-600 hover:to-green-700"
                 >
                   <FiPlay className="mr-2 h-5 w-5" />
-                  {username ? 'Join Global Race' : 'Set Username & Join'}
+                  Join Global Race
                 </Button>
               </div>
               {!isConnected && (
@@ -147,13 +130,6 @@ export default function GlobalRacePage() {
           </div>
         )}
       </div>
-
-      {/* Username Modal */}
-      <UsernameModal
-        isOpen={showUsernameModal}
-        onClose={() => setShowUsernameModal(false)}
-        onSuccess={handleUsernameSet}
-      />
     </div>
   );
 }

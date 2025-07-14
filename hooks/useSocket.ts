@@ -1,38 +1,57 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useRaceStore } from '@/store/race.store';
+import { usePathname } from 'next/navigation';
 
 // Global socket instance to prevent multiple connections
 let globalSocket: Socket | null = null;
+let isConnecting = false;
 
 export const useSocket = () => {
   const { setSocket, setRaceData, updatePlayer, addPlayer, removePlayer, setCountdown, startRace, endRace, resetRace, updateTypingProgress, clearResults, setPlayers } = useRaceStore();
   const initializationRef = useRef(false);
+  const pathname = usePathname();
+  
+  // Only initialize socket on race-related pages
+  const isRacePage = pathname.includes('/race/') || pathname.includes('/practice');
   
   useEffect(() => {
+    // Don't initialize socket on non-race pages
+    if (!isRacePage) {
+      return;
+    }
+
     // Prevent multiple initializations
     if (initializationRef.current && globalSocket) {
       setSocket(globalSocket);
       return;
     }
 
+    // Prevent concurrent connection attempts
+    if (isConnecting) {
+      return;
+    }
+
     console.log('🔌 Initializing socket connection to http://localhost:3003');
+    isConnecting = true;
+    
     const socketInstance: Socket = io('http://localhost:3003', {
       transports: ['websocket'], // Prefer websocket only to avoid polling fallback errors
       upgrade: true,
       rememberUpgrade: true,
-      timeout: 10000, // Reduced timeout for faster connection feedback
-      forceNew: false, // Allow connection reuse
+      timeout: 5000, // Reduced timeout for faster feedback
+      forceNew: false,
       reconnection: true,
-      reconnectionDelay: 500, // Faster reconnection attempts
-      reconnectionDelayMax: 3000, // Reduced max delay
-      reconnectionAttempts: 5, // More attempts for better reliability
-      randomizationFactor: 0.3 // Less randomization for predictable timing
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 3, // Reduced for faster failure detection
+      randomizationFactor: 0.2
     });
 
     // Store global socket reference
     globalSocket = socketInstance;
     initializationRef.current = true;
+    isConnecting = false;
     
     socketInstance.on('connect', () => {
       console.log('✅ Socket connected successfully:', socketInstance.id);
@@ -44,14 +63,15 @@ export const useSocket = () => {
       // Only set socket to null if it's a permanent disconnection
       if (reason === 'io server disconnect' || reason === 'io client disconnect') {
         setSocket(null);
-        globalSocket = null; // Clear global reference
+        globalSocket = null;
+        initializationRef.current = false;
+        isConnecting = false;
       }
-      // For transport errors, keep the socket instance for reconnection
     });
 
     socketInstance.on('connect_error', (error) => {
       console.error('🚨 Socket connection error:', error.message || error);
-      // Don't set socket to null immediately, let reconnection handle it
+      isConnecting = false;
     });
 
     socketInstance.on('reconnect_error', (error) => {
@@ -61,7 +81,9 @@ export const useSocket = () => {
     socketInstance.on('reconnect_failed', () => {
       console.error('💥 Socket reconnection failed after all attempts');
       setSocket(null);
-      globalSocket = null; // Clear global reference
+      globalSocket = null;
+      initializationRef.current = false;
+      isConnecting = false;
     });
 
     socketInstance.on('reconnect', (attemptNumber) => {
@@ -160,11 +182,18 @@ export const useSocket = () => {
     });
     
     return () => {
-      // Don't disconnect the socket on component unmount
-      // Only clean up event listeners if needed
-      console.log('🧹 Component unmounting but keeping socket connection alive');
+      // Only clean up on page navigation away from race pages
+      if (!isRacePage) {
+        console.log('🧹 Cleaning up socket connection on page navigation');
+        if (globalSocket) {
+          globalSocket.disconnect();
+          globalSocket = null;
+          initializationRef.current = false;
+          isConnecting = false;
+        }
+      }
     };
-  }, []); // Empty dependency array to run only once
+  }, [isRacePage]); // Depend on race page status
 };
 
 export const useTypingStats = (text: string, currentPosition: number, startTime: number | null) => {
