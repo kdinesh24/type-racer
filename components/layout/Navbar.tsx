@@ -73,7 +73,7 @@ export function Navbar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`group flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors relative ${
+                  className={`group flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     item.isActive
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-accent'
@@ -82,10 +82,6 @@ export function Navbar() {
                 >
                   <Icon className="h-4 w-4" />
                   <span>{item.label}</span>
-                  {/* Tooltip on hover */}
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs bg-gray-900 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
-                    {item.description}
-                  </div>
                 </Link>
               );
             })}

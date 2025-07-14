@@ -3,6 +3,16 @@
 import { useState } from 'react';
 import { useRaceStore } from '@/store/race.store';
 import { FiUser, FiPlay } from 'react-icons/fi';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface UsernameModalProps {
   isOpen: boolean;
@@ -21,7 +31,9 @@ export default function UsernameModal({ isOpen, onClose, onSuccess }: UsernameMo
       if (onSuccess) {
         onSuccess();
       } else {
-        joinRace();
+        // Don't automatically join a race - let the parent component handle what to do next
+        // This prevents accidentally joining global races from private room pages
+        console.log('Username set, but no onSuccess callback provided. Not auto-joining race.');
       }
       onClose();
     }
@@ -30,43 +42,45 @@ export default function UsernameModal({ isOpen, onClose, onSuccess }: UsernameMo
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-black rounded-lg p-8 max-w-md w-full mx-4 border border-gray-200 dark:border-gray-800">
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FiUser className="w-8 h-8 text-black dark:text-white" />
+    <Dialog open={isOpen} onOpenChange={() => {}}>
+      <DialogContent className="bg-white border-gray-200 max-w-md">
+        <DialogHeader>
+          <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FiUser className="w-8 h-8 text-blue-600" />
           </div>
-          <h2 className="text-2xl font-bold text-black dark:text-white mb-2">
+          <DialogTitle className="text-2xl font-bold text-black text-center">
             Enter Your Username
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
+          </DialogTitle>
+          <DialogDescription className="text-gray-600 text-center">
             Choose a username to join the race
-          </p>
-        </div>
+          </DialogDescription>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-6">
-            <input
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="username" className="text-black">Username</Label>
+            <Input
+              id="username"
               type="text"
               value={inputUsername}
               onChange={(e) => setInputUsername(e.target.value)}
-              placeholder="Your username"
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent bg-white dark:bg-black text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-500"
+              placeholder="Enter your username"
+              className="bg-white border-gray-300 text-black placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500"
               maxLength={20}
               autoFocus
             />
           </div>
 
-          <button
+          <Button
             type="submit"
             disabled={!inputUsername.trim()}
-            className="w-full bg-black dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-200 disabled:bg-gray-400 disabled:cursor-not-allowed text-white dark:text-black font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             <FiPlay className="w-5 h-5" />
             Join Race
-          </button>
+          </Button>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

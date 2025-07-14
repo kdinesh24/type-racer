@@ -26,8 +26,18 @@ export default function PrivateRacePage() {
     leaveRace,
     isPrivateRoom,
     isHost,
-    players
+    players,
+    resetRace  // Add resetRace to clear any existing race state
   } = useRaceStore();
+
+  // Clear any existing race state when landing on private room selection page
+  useEffect(() => {
+    // If we're on the main private room page (not a specific room), clear any existing race
+    if (raceId && !isPrivateRoom) {
+      console.log('🧹 Clearing non-private race state on private room page');
+      resetRace();
+    }
+  }, [raceId, isPrivateRoom, resetRace]);
 
   // Show username modal if no username is set
   useEffect(() => {
@@ -84,10 +94,11 @@ export default function PrivateRacePage() {
   const handleRoomJoin = (roomCode: string) => {
     // Validate room code before attempting to join
     if (!roomCode || roomCode.trim().length !== 5) {
-      console.error('Invalid room code provided:', roomCode);
+      console.error('Private room page - invalid room code provided:', roomCode);
       return;
     }
     
+    console.log('Private room page - joining room with code:', roomCode);
     joinPrivateRoom(roomCode);
     setShowRoomModal(false);
   };

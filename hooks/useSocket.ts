@@ -74,6 +74,17 @@ export const useSocket = () => {
     });
     
     socketInstance.on('race-joined', (data) => {
+      console.log('Socket received race-joined event:', data);
+      console.log('Current URL path:', typeof window !== 'undefined' ? window.location.pathname : 'unknown');
+      
+      // Always accept the race data, but log if there's a mismatch
+      const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+      if (currentPath.includes('/race/private/') && !data.isPrivate) {
+        console.warn('⚠️  Received non-private race data while on private room page, but accepting anyway');
+        console.log('Race data isPrivate flag:', data.isPrivate);
+        console.log('Expected private room, but got:', data);
+      }
+      
       setRaceData(data);
     });
     

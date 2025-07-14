@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useRaceStore } from '@/store/race.store';
 import { useTypingStats } from '@/hooks/useSocket';
 import { cn } from '@/lib/utils';
-import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 
@@ -216,7 +215,7 @@ export default function TypingArea() {
   };
 
   // Render each character with color & highlights
-  const renderText = () =>
+  const renderText = () => (
     text.split('').map((char, idx) => {
       let base = 'untyped-char';
       if (idx < userInput.length) {
@@ -262,141 +261,138 @@ export default function TypingArea() {
           {char}
         </span>
       );
-    });
+    })
+  );
 
   if (!text) {
     return (
-      <Card>
-        <CardContent className="text-center text-black">
-          Waiting for race to load...
-        </CardContent>
-      </Card>
+      <div className="bg-white text-center text-black p-6">
+        Waiting for race to load...
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardContent className="space-y-6">
-        {/* Text Display */}
-        <div
-          className={cn(
-            'p-6 font-mono text-lg leading-relaxed whitespace-pre-wrap break-words',
-            !isRaceActive && 'opacity-60'
-          )}
-        >
-          {renderText()}
-          {isRaceActive && currentIndex === text.length && (
-            <span className="animate-pulse">|</span>
-          )}
-        </div>
+    <div className="bg-white space-y-6">
+      {/* Text Display */}
+      <div
+        className={cn(
+          'font-mono text-lg leading-relaxed whitespace-pre-wrap break-words text-black',
+          !isRaceActive && 'opacity-60'
+        )}
+      >
+        {renderText()}
+        {isRaceActive && currentIndex === text.length && (
+          <span className="animate-pulse">|</span>
+        )}
+      </div>
 
-        {/* Host Start Button */}
-        {isPrivateRoom &&
-          isHost &&
-          !isRaceActive &&
-          countdown === 0 && (
-            <div className="text-center space-y-2">
-              <Button
-                onClick={startPrivateRace}
-                disabled={players.length < 2}
-                className={cn(
-                  'px-8 py-3 font-semibold text-white',
-                  players.length >= 2
-                    ? 'bg-green-600 hover:bg-green-700'
-                    : 'bg-gray-400 cursor-not-allowed'
-                )}
-              >
-                {players.length < 2
-                  ? 'Waiting for more players...'
-                  : 'Start Race'}
-              </Button>
-              <p className="text-sm text-black">
-                {players.length < 2
-                  ? `Need at least 2 players (${players.length}/2)`
-                  : 'Click to start the race'}
-              </p>
-            </div>
-          )}
-
-        {/* Waiting for Host */}
-        {isPrivateRoom &&
-          !isHost &&
-          !isRaceActive &&
-          countdown === 0 && (
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center">
-              <p className="text-blue-600 dark:text-blue-400 font-medium">
-                Waiting for host to start the race...
-              </p>
-              <p className="mt-1 text-sm text-black">
-                {players.length}/2+ players ready
-              </p>
-            </div>
-          )}
-
-        {/* Countdown */}
-        {countdown > 0 && (
-          <div className="text-center space-y-1">
-            <div className="text-6xl font-bold text-blue-600 dark:text-blue-400">
-              {countdown}
-            </div>
-            <p className="text-black">
-              Race starting...
+      {/* Host Start Button */}
+      {isPrivateRoom &&
+        isHost &&
+        !isRaceActive &&
+        countdown === 0 && (
+          <div className="text-center space-y-2">
+            <Button
+              onClick={startPrivateRace}
+              disabled={players.length < 2}
+              className={cn(
+                'px-8 py-3 font-semibold text-white',
+                players.length >= 2
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-gray-400 cursor-not-allowed'
+              )}
+            >
+              {players.length < 2
+                ? 'Waiting for more players...'
+                : 'Start Race'}
+            </Button>
+            <p className="text-sm text-black">
+              {players.length < 2
+                ? `Need at least 2 players (${players.length}/2)`
+                : 'Click to start the race'}
             </p>
           </div>
         )}
 
-        {/* Input Area */}
-        <div className="relative">
-          <Textarea
-            ref={inputRef}
-            value={userInput}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            disabled={!isRaceActive}
-            placeholder={
-              isRaceActive
-                ? 'Start typing...'
-                : 'Race will start soon...'
-            }
-            className="font-mono text-lg resize-none"
-            rows={4}
-          />
-          {isRaceActive && (
-            <div className="absolute bottom-2 right-3 text-sm text-black">
-              {currentIndex}/{text.length}
-            </div>
-          )}
-        </div>
-
-        {/* Live Stats */}
-        {isRaceActive && (
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {wpm}
-              </div>
-              <div className="text-sm text-black">
-                WPM
-              </div>
-            </div>
-            <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {accuracy}%
-              </div>
-              <div className="text-sm text-black">
-                Accuracy
-              </div>
-            </div>
+      {/* Waiting for Host */}
+      {isPrivateRoom &&
+        !isHost &&
+        !isRaceActive &&
+        countdown === 0 && (
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center">
+            <p className="text-blue-600 dark:text-blue-400 font-medium">
+              Waiting for host to start the race...
+            </p>
+            <p className="mt-1 text-sm text-black">
+              {players.length}/2+ players ready
+            </p>
           </div>
         )}
 
-        {/* Help Text */}
-        {isRaceActive && (
-          <p className="text-center text-xs text-black">
-            💡 Press space to jump to the next word. Backspace freely to fix errors.
+      {/* Countdown */}
+      {countdown > 0 && (
+        <div className="text-center space-y-1">
+          <div className="text-6xl font-bold text-blue-600 dark:text-blue-400">
+            {countdown}
+          </div>
+          <p className="text-black">
+            Race starting...
           </p>
+        </div>
+      )}
+
+      {/* Input Area */}
+      <div className="relative">
+        <Textarea
+          ref={inputRef}
+          value={userInput}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          disabled={!isRaceActive}
+          placeholder={
+            isRaceActive
+              ? 'Start typing...'
+              : 'Race will start soon...'
+          }
+          className="font-mono text-lg resize-none"
+          rows={4}
+        />
+        {isRaceActive && (
+          <div className="absolute bottom-2 right-3 text-sm text-black">
+            {currentIndex}/{text.length}
+          </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Live Stats */}
+      {isRaceActive && (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              {wpm}
+            </div>
+            <div className="text-sm text-black">
+              WPM
+            </div>
+          </div>
+          <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+              {accuracy}%
+            </div>
+            <div className="text-sm text-black">
+              Accuracy
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Help Text */}
+      {isRaceActive && (
+        <p className="text-center text-xs text-black">
+          💡 Press space to jump to the next word. Backspace freely to fix errors.
+        </p>
+      )}
+    </div>
   );
 }

@@ -76,7 +76,16 @@ export const useRaceStore = create<RaceState & RaceActions>((set, get) => ({
   
   joinRace: (raceId) => {
     const { socket, username } = get();
+    
+    // Prevent joining global races if we're on a private room page
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    if (currentPath.includes('/race/private')) {
+      console.log('🚫 Blocking global race join attempt from private room path:', currentPath);
+      return;
+    }
+    
     if (socket && username) {
+      console.log('Joining global race:', { username, raceId });
       socket.emit('join-race', { username, raceId });
     }
   },
@@ -84,16 +93,37 @@ export const useRaceStore = create<RaceState & RaceActions>((set, get) => ({
   joinPrivateRoom: (roomCode) => {
     const { socket, username } = get();
     if (socket && username && roomCode && roomCode.trim().length === 5) {
-      socket.emit('join-race', { username, raceId: roomCode.trim().toUpperCase(), isPrivate: true });
+      const normalizedRoomCode = roomCode.trim().toUpperCase();
+      console.log('🏠 Joining private room with code:', normalizedRoomCode, 'username:', username);
+      
+      // Explicitly mark this as a private room join with maximum clarity
+      socket.emit('join-race', { 
+        username, 
+        raceId: normalizedRoomCode, 
+        isPrivate: true,
+        forcePrivate: true  // Additional flag for server
+      });
     } else {
-      console.error('Invalid room code or missing credentials:', { roomCode, username, socketConnected: !!socket });
+      console.error('Cannot join private room - validation failed:', { 
+        roomCode, 
+        roomCodeLength: roomCode?.trim().length, 
+        username, 
+        socketExists: !!socket 
+      });
     }
   },
 
   createPrivateRoom: () => {
     const { socket, username } = get();
     if (socket && username) {
-      socket.emit('join-race', { username, isPrivate: true });
+      console.log('🏗️  Creating new private room for user:', username);
+      socket.emit('join-race', { 
+        username, 
+        isPrivate: true, 
+        forcePrivate: true 
+      });
+    } else {
+      console.error('Cannot create private room - missing socket or username:', { username, socketExists: !!socket });
     }
   },
 
@@ -113,14 +143,36 @@ export const useRaceStore = create<RaceState & RaceActions>((set, get) => ({
 
   clearResults: () => set({ raceResults: null }),
 
-  setRaceData: (data) => set({
-    raceId: data.raceId, 
-    text: data.text, 
-    players: data.players,
-    raceResults: null,
-    isPrivateRoom: data.isPrivate || false,
-    isHost: data.isHost || false
-  }),
+  setRaceData: (data) => {
+    console.log('Setting race data:', data);
+    
+    // Detect if we should force private room context based on URL
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    const shouldBePrivate = currentPath.includes('/race/private/');
+    
+    // If we're on a private room page but the data doesn't indicate private, force it
+    const isPrivateRoom = data.isPrivate === true || shouldBePrivate;
+    
+    if (shouldBePrivate && !data.isPrivate) {
+      console.log('🔧 Forcing private room context due to URL path');
+    }
+    
+    set({
+      raceId: data.raceId, 
+      text: data.text, 
+      players: data.players,
+      raceResults: null,
+      isPrivateRoom: isPrivateRoom,
+      isHost: data.isHost === true
+    });
+    
+    console.log('Race state updated:', {
+      raceId: data.raceId,
+      isPrivateRoom: isPrivateRoom,
+      isHost: data.isHost === true,
+      playersCount: data.players?.length || 0
+    });
+  },
   
   updatePlayer: (playerId, data) => set((state) => {
     const updatedPlayers = state.players.map(player => 

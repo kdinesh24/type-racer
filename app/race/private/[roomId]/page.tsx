@@ -49,10 +49,10 @@ export default function PrivateRoomPage() {
       // Validate room ID format (should be 5 uppercase alphanumeric characters)
       const normalizedRoomId = roomId.toString().toUpperCase();
       if (normalizedRoomId.length === 5 && /^[A-Z0-9]{5}$/.test(normalizedRoomId)) {
-        console.log('Attempting to join room:', normalizedRoomId);
+        console.log('Private room page - attempting to join room:', normalizedRoomId);
         joinPrivateRoom(normalizedRoomId);
       } else {
-        console.error('Invalid room ID format:', roomId);
+        console.error('Private room page - invalid room ID format:', roomId);
         // Redirect back to private room selection
         router.push('/race/private');
       }
